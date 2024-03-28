@@ -42,6 +42,10 @@ func initDB(db *sql.DB) error {
 func submitTodoHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PostFormValue("name")
+		if name == "" {
+			http.Error(w, "The name of the todo cannot be empty", http.StatusBadRequest)
+			return
+		}
 		completed := r.PostFormValue("completed") == "true"
 
 		var lastInsertId int
@@ -59,12 +63,19 @@ func submitTodoHandler(db *sql.DB) http.HandlerFunc {
 
 func deleteTodoHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.FormValue("id")
+		if err := r.ParseForm(); err != nil {
+			log.Printf("Error parsing form: %v", err)
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
 
+		id := r.FormValue("id")
 		fmt.Println("id = ", id)
+
 		_, err := db.Exec("DELETE FROM todos WHERE id = ?", id)
 		if err != nil {
-			http.Error(w, "Failed to delete todo", http.StatusInternalServerError)
+			log.Printf("Error deleting todo: %v", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
