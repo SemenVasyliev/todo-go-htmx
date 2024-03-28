@@ -2,4 +2,12 @@
     <td>{{ .Id }}</td>
     <td>{{ .Name }}</td>
     <td>{{ .IsCompleted }}</td>
+    <td>
+        <button hx-post="/delete-todo/"
+                hx-vals='{"id": "{{.Id}}"}'
+                hx-target="closest tr"
+                hx-swap="outerHTML delete"
+                class="btn btn-danger">Delete
+        </button>
+    </td>
 </tr>

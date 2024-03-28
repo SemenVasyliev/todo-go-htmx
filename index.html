@@ -15,7 +15,7 @@
         <div class="col-8">
             <h1 class="mb-4">Todo Items</h1>
         
-            <table class="table">
+             <table class="table">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -26,13 +26,18 @@
                 </thead>  
                 
                 <tbody id="todo-table-body">
-                    <template x-for="todo in todos">
+                    <template x-for="todo in todos" :key="todo.id">
                      <tr>
                          <td x-text="todo.id"></td>
                          <td x-text="todo.name" @click="todo.name = todo.name.toUpperCase()"></td>
                          <td x-text="todo.isCompleted"></td>
                          <td>
-                            <button hx-post="/delete-todo/" hx-vals='{"id": "1"}' hx-target="closest tr" hx-swap="outerHTML delete">Delete</button>
+                            <button hx-post="/delete-todo/"
+                                    :hx-vals='`{"id": "${todo.id}"}`'
+                                    hx-target="closest tr"
+                                    hx-swap="outerHTML delete"
+                                    class="btn btn-danger">Delete
+                            </button>
                          </td>
                         </tr>
                     </template>
@@ -46,7 +51,7 @@
             <form hx-post="/submit-todo/" hx-target="#todo-table-body" hx-swap="beforeend">
                  <div class="mb-2">
                     <label>Todo Name</label>
-                    <input type="text" name="name" class="form-control" />
+                    <input id="input-name" type="text" name="name" class="form-control" required/>
                  </div>
                  <div class="mb-2">
                     <label>Is Completed?</label>
@@ -58,6 +63,5 @@
         </div>
 
     </div>
-
 </body>
 </html>
