@@ -21,19 +21,22 @@
                         <th>ID</th>
                         <th>Name</th>
                         <th>Completed</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>  
                 
-            <tbody id="todo-table-body">
-                <template x-for="todo in todos">
-                    <tr>
-                        <td x-text="todo.id"></td>
-                        <td x-text="todo.name" @click="todo.name = todo.name.toUpperCase()"></td>
-                        <td x-text="todo.isCompleted"></td>
-                    </tr>
-                </template>
-            </tbody>
-
+                <tbody id="todo-table-body">
+                    <template x-for="todo in todos">
+                     <tr>
+                         <td x-text="todo.id"></td>
+                         <td x-text="todo.name" @click="todo.name = todo.name.toUpperCase()"></td>
+                         <td x-text="todo.isCompleted"></td>
+                         <td>
+                            <button hx-post="/delete-todo/" hx-vals='{"id": "1"}' hx-target="closest tr" hx-swap="outerHTML delete">Delete</button>
+                         </td>
+                        </tr>
+                    </template>
+                </tbody>
             </table>
         </div>
 

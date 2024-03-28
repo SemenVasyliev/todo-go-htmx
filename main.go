@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -39,7 +40,6 @@ func initDB(db *sql.DB) error {
 
 // handlers
 func submitTodoHandler(db *sql.DB) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PostFormValue("name")
 		completed := r.PostFormValue("completed") == "true"
@@ -57,8 +57,22 @@ func submitTodoHandler(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func indexHandler(db *sql.DB) http.HandlerFunc {
+func deleteTodoHandler(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.FormValue("id")
 
+		fmt.Println("id = ", id)
+		_, err := db.Exec("DELETE FROM todos WHERE id = ?", id)
+		if err != nil {
+			http.Error(w, "Failed to delete todo", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func indexHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var todos []Todo
 		rows, err := db.Query("SELECT id, name, isCompleted FROM todos")
@@ -102,5 +116,6 @@ func main() {
 
 	http.HandleFunc("/", indexHandler(db))
 	http.HandleFunc("/submit-todo/", submitTodoHandler(db))
+	http.HandleFunc("/delete-todo/", deleteTodoHandler(db))
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
