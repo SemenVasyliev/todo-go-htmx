@@ -1,22 +1,19 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"html/template"
 	"log"
 	"net/http"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Todo struct {
 	Id          int    `json:"id"`
 	Name        string `json:"name"`
 	IsCompleted bool   `json:"isCompleted"`
-}
-
-var todos = []Todo{
-	{Id: 1, Name: "Learn Go", IsCompleted: false},
-	{Id: 2, Name: "Learn Alpine", IsCompleted: false},
-	{Id: 3, Name: "Go to the gym", IsCompleted: true},
 }
 
 var templates map[string]*template.Template
@@ -30,30 +27,80 @@ func init() {
 	templates["todo.html"] = template.Must(template.ParseFiles("todo.html"))
 }
 
-// handlers
-func submitTodoHandler(w http.ResponseWriter, r *http.Request) {
-	name := r.PostFormValue("name")
-	completed := r.PostFormValue("completed") == "true"
-	todo := Todo{Id: 4, Name: name, IsCompleted: completed}
-
-	todos = append(todos, todo)
-	tmpl := templates["todo.html"]
-	tmpl.ExecuteTemplate(w, "todo.html", todo)
+func initDB(db *sql.DB) error {
+	const createTableSQL = `CREATE TABLE IF NOT EXISTS todos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        isCompleted BOOLEAN NOT NULL DEFAULT 0
+    );`
+	_, err := db.Exec(createTableSQL)
+	return err
 }
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	json, err := json.Marshal(todos)
+// handlers
+func submitTodoHandler(db *sql.DB) http.HandlerFunc {
 
-	if err != nil {
-		log.Fatal(err)
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.PostFormValue("name")
+		completed := r.PostFormValue("completed") == "true"
+
+		var lastInsertId int
+		err := db.QueryRow("INSERT INTO todos (name, isCompleted) VALUES ($1, $2) RETURNING id", name, completed).Scan(&lastInsertId)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		todo := Todo{Id: lastInsertId, Name: name, IsCompleted: completed}
+
+		tmpl := templates["todo.html"]
+		tmpl.ExecuteTemplate(w, "todo.html", todo)
 	}
+}
 
-	tmpl := templates["index.html"]
-	tmpl.ExecuteTemplate(w, "index.html", map[string]template.JS{"Todos": template.JS(json)})
+func indexHandler(db *sql.DB) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var todos []Todo
+		rows, err := db.Query("SELECT id, name, isCompleted FROM todos")
+		if err != nil {
+			log.Fatal("Db querry error", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var todo Todo
+			err := rows.Scan(&todo.Id, &todo.Name, &todo.IsCompleted)
+			if err != nil {
+				log.Fatal("Db scan error", err)
+			}
+			todos = append(todos, todo)
+		}
+		if err = rows.Err(); err != nil {
+			log.Fatal(err)
+		}
+
+		json, err := json.Marshal(todos)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		tmpl := templates["index.html"]
+		tmpl.ExecuteTemplate(w, "index.html", map[string]template.JS{"Todos": template.JS(json)})
+	}
 }
 
 func main() {
-	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/submit-todo/", submitTodoHandler)
+	db, err := sql.Open("sqlite3", "db.sqlite")
+	if err != nil {
+		log.Fatal("Failed to open database", err)
+	}
+	defer db.Close()
+
+	if err := initDB(db); err != nil {
+		log.Fatal("Failed to initialize database:", err)
+	}
+
+	http.HandleFunc("/", indexHandler(db))
+	http.HandleFunc("/submit-todo/", submitTodoHandler(db))
 	log.Fatal(http.ListenAndServe(":8000", nil))
 }
