@@ -48,8 +48,21 @@ func submitTodoHandler(db *sql.DB) http.HandlerFunc {
 		}
 		completed := r.PostFormValue("completed") == "true"
 
+		var exists bool
+		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM todos WHERE name = $1)", name).Scan(&exists)
+		if err != nil {
+			log.Fatal("Database query error", err)
+		}
+
+		if exists {
+			if exists {
+				w.WriteHeader(http.StatusConflict)
+				return
+			}
+		}
+
 		var lastInsertId int
-		err := db.QueryRow("INSERT INTO todos (name, isCompleted) VALUES ($1, $2) RETURNING id", name, completed).Scan(&lastInsertId)
+		err = db.QueryRow("INSERT INTO todos (name, isCompleted) VALUES ($1, $2) RETURNING id", name, completed).Scan(&lastInsertId)
 		if err != nil {
 			log.Fatal(err)
 		}
