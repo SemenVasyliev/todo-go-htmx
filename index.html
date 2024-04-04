@@ -10,7 +10,6 @@
     <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
 </head>
 <body class="container">
-
     <div class="row mt-4 g-4" x-data="{todos: {{ .Todos }} }">
         <div class="col-8">
             <h1 class="mb-4">Todo Items</h1>
@@ -24,7 +23,6 @@
                         <th>Actions</th>
                     </tr>
                 </thead>  
-                
                 <tbody id="todo-table-body">
                     <template x-for="todo in todos" :key="todo.id">
                      <tr>
@@ -47,7 +45,8 @@
 
         <div class="col-4">
             <h1 class="mb-4">Add Todo</h1>
-
+            <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+        
             <form hx-post="/submit-todo/" hx-target="#todo-table-body" hx-swap="beforeend">
                  <div class="mb-2">
                     <label>Todo Name</label>
@@ -57,11 +56,22 @@
                     <label>Is Completed?</label>
                     <input type="checkbox" name="completed" value="true" />
                  </div>
-
                  <input type="submit" value="Submit" class="btn btn-primary" />
             </form>
-        </div>
 
-    </div>
+        </div>
+    </div>      
+
+    <script>
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            var response = event.detail.xhr;
+            if (response.status === 409) { // catch Conflict from server
+                var errorMessageDiv = document.getElementById('error-message');
+                errorMessageDiv.style.display = 'block';
+                errorMessageDiv.textContent = 'This task is already exists'; 
+                setTimeout(function() { errorMessageDiv.style.display = 'none'; }, 3000); // 3 seconds timer
+            }
+        });
+        </script>
 </body>
 </html>
